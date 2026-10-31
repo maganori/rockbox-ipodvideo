@@ -35,7 +35,7 @@ CLEANOBJS += $(BUILDDIR)/sysfont.* $(BUILDDIR)/version.*
 ifneq (,$(findstring -DBOOTLOADER,$(EXTRA_DEFINES)))
 	MAXCHAR = 127
 else
-	MAXCHAR = 255
+	MAXCHAR = 65535
 endif
 
 $(FIRMLIB): $(FIRMLIB_OBJ)
