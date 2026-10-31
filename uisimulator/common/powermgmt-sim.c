@@ -29,10 +29,13 @@
 #define BATT_MAXMVOLT   4300      /* maximum millivolts of battery */
 #define BATT_MAXRUNTIME (10 * 60) /* maximum runtime with full battery in
                                      minutes */
-/* Number of millivolts to discharge the battery every second */
-#define BATT_DISCHARGE_STEP ((BATT_MAXMVOLT - BATT_MINMVOLT) / 100)
+/* Number of millivolts to discharge the battery every second.
+ * Sped up from the stock values so a full discharge/charge cycle
+ * takes ~25s/~20s of simulator time (custom change, after
+ * 13_simulator_charger_s from the r30186 era). */
+#define BATT_DISCHARGE_STEP ((BATT_MAXMVOLT - BATT_MINMVOLT) / 25)
 /* Number of millivolts to charge the battery every second */
-#define BATT_CHARGE_STEP (BATT_DISCHARGE_STEP * 2)
+#define BATT_CHARGE_STEP ((BATT_MAXMVOLT - BATT_MINMVOLT) / 20)
 #if CONFIG_CHARGING >= CHARGING_MONITOR
 /* Number of seconds to externally power before discharging again */
 #define POWER_AFTER_CHARGE_TICKS (8 * HZ)
@@ -66,6 +69,7 @@ static void battery_status_update(void)
         if (TIME_AFTER(current_tick, ext_power_until_tick)) {
             /* Pretend the charger was disconnected */
             charger_input_state = CHARGER_UNPLUGGED;
+            charge_state = DISCHARGING;
             ext_power_until_tick = 0;
         }
         return;
@@ -79,6 +83,8 @@ static void battery_status_update(void)
 #if CONFIG_CHARGING >= CHARGING_MONITOR
             /* Keep external power until tick */
             ext_power_until_tick = current_tick + POWER_AFTER_CHARGE_TICKS;
+            /* Battery full: charger switches to trickle until unplug */
+            charge_state = TRICKLE;
 #elif CONFIG_CHARGING
             /* Pretend the charger was disconnected */
             charger_input_state = CHARGER_UNPLUGGED;
@@ -91,6 +97,9 @@ static void battery_status_update(void)
 #if CONFIG_CHARGING
             /* Pretend the charger was connected */
             charger_input_state = CHARGER_PLUGGED;
+#endif
+#if CONFIG_CHARGING >= CHARGING_MONITOR
+            charge_state = CHARGING;
 #endif
         }
     }
