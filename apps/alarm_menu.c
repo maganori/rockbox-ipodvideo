@@ -55,31 +55,25 @@ int alarm_screen(void)
 
     if (!usb && update)
     {
-
-            now = get_time();
-            int nmins = now->tm_min + (now->tm_hour * 60);
-            int amins = atm.tm_min + (atm.tm_hour * 60);
-            int mins_togo = (amins - nmins + 1440) % 1440;
-            /* prevent that an alarm occurs in the shutdown procedure */
-            /* accept alarms only if they are in 2 minutes or more */
-            if (mins_togo > 1) {
-                rtc_init();
-                rtc_set_alarm(atm.tm_hour,atm.tm_min);
-                rtc_enable_alarm(true);
-                if (global_settings.talk_menu)
-                {
-                    talk_id(LANG_ALARM_MOD_TIME_TO_GO, true);
-                    talk_value(mins_togo / 60, UNIT_HOUR, true);
-                    talk_value(mins_togo % 60, UNIT_MIN, true);
-                    talk_force_enqueue_next();
-                }
-                /* (voiced above) */
-                splashf(HZ*2, str(LANG_ALARM_MOD_TIME_TO_GO),
-                               mins_togo / 60, mins_togo % 60);
-            } else {
-                splash(HZ, ID2P(LANG_ALARM_MOD_ERROR));
-                update = false;
+            /* Custom change (from 11_alarm_menu_plus, r30186 era):
+             * upstream rejects alarms less than 2 minutes ahead to
+             * avoid the alarm firing during the shutdown procedure;
+             * here alarms are accepted at any time, and the splash /
+             * voice feedback reports the alarm time that was set
+             * instead of the remaining time. */
+            rtc_init();
+            rtc_set_alarm(atm.tm_hour,atm.tm_min);
+            rtc_enable_alarm(true);
+            if (global_settings.talk_menu)
+            {
+                talk_id(LANG_ALARM_MOD_TIME_TO_GO, true);
+                talk_value(atm.tm_hour, UNIT_HOUR, true);
+                talk_value(atm.tm_min, UNIT_MIN, true);
+                talk_force_enqueue_next();
             }
+            /* (voiced above) */
+            splashf(HZ*2, str(LANG_ALARM_MOD_TIME_TO_GO),
+                           atm.tm_hour, atm.tm_min);
     }
 
     if (usb || !update)
