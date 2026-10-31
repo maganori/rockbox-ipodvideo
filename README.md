@@ -20,7 +20,7 @@ Rockbox の個人用カスタムフォーク。主に iPod Video（5/5.5世代�
 | 10 | 起動ロゴの表示位置を全画面に（y=10→0）（元パッチ 04） | [`85f3b242a`](https://github.com/maganori/rockbox-ipodvideo/commit/85f3b242a65c173ab8017fcc3c01132047dc81b5) | 全ターゲット共通 |
 | 11 | 起動ロゴを 320×240 のカスタム画像に差し替え | [`f8a7ca4d8`](https://github.com/maganori/rockbox-ipodvideo/commit/f8a7ca4d85f37089e65a30505758d0b769326e73) | 320×240 画面向け |
 | 12 | シミュレータの充電シミュレーション高速化＋ charge_state 遷移（元パッチ 13） | [`8aeba4787`](https://github.com/maganori/rockbox-ipodvideo/commit/8aeba4787031dd85ffa30f883d7840736dca24b8) | シミュレータ専用 |
-| 13 | シミュレータのイベント待ちを Windows ではポーリング方式に変更（SDL_WaitEvent が即時失敗する環境で起動直後に終了するため。Windows 以外は従来通り） | [f4f805066](https://github.com/maganori/rockbox-ipodvideo/commit/f4f80506662dd13a289126e7b685628fcfb59480) |
+| 13 | シミュレータのイベント待ちを Windows ではポーリング方式に変更（SDL_WaitEvent が即時失敗する環境で起動直後に終了するため。Windows 以外は従来通り） | [`f4f805066`](https://github.com/maganori/rockbox-ipodvideo/commit/f4f80506662dd13a289126e7b685628fcfb59480) |
 
 ## iFlash 等のストレージ換装について
 
