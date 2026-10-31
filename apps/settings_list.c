@@ -1446,6 +1446,10 @@ const struct settings_list settings[] = {
     OFFON_SETTING(0, accessory_supply, LANG_ACCESSORY_SUPPLY,
                   true, "accessory power supply", accessory_supply_set),
 #endif
+#ifdef HAS_BUTTON_HOLD
+    OFFON_SETTING(0, poweroff_on_hold, LANG_POWEROFF_ON_HOLD, false,
+                  "poweroff on hold", set_poweroff_on_hold),
+#endif
 #ifdef HAVE_LINEOUT_POWEROFF
     OFFON_SETTING(0, lineout_active, LANG_LINEOUT,
                   true, "lineout", lineout_set),

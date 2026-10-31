@@ -887,6 +887,11 @@ void backlight_set_timeout_plugged(int value)
 /* Hold button change event handler. */
 void backlight_hold_changed(bool hold_button)
 {
+#ifndef SIMULATOR /* hold-poweroff */
+    if (hold_button)
+        signal_hold_button_on();
+#endif /* hold-poweroff */
+
 #ifndef BOOTLOADER
     skin_request_update_locked(hold_button);
 #endif

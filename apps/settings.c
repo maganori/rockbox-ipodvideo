@@ -905,6 +905,10 @@ void settings_apply(bool read_disk)
 
     sound_settings_apply();
 
+#ifdef HAS_BUTTON_HOLD
+    set_poweroff_on_hold(global_settings.poweroff_on_hold);
+#endif
+
 #ifdef HAVE_DISK_STORAGE
     audio_set_buffer_margin(global_settings.buffer_margin);
 #endif

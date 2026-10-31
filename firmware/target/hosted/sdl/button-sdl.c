@@ -85,6 +85,16 @@ bool hold_button_state = false;
 bool button_hold(void) {
     return hold_button_state;
 }
+
+void set_poweroff_on_hold(bool yesno)
+{
+    (void)yesno;
+}
+
+void signal_hold_button_on(void)
+{
+    
+}
 #endif
 
 #ifdef HAS_REMOTE_BUTTON_HOLD

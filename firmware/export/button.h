@@ -40,6 +40,8 @@ int button_read_device(void);
 
 #ifdef HAS_BUTTON_HOLD
 bool button_hold(void);
+void signal_hold_button_on(void);
+void set_poweroff_on_hold(bool yesno);
 #endif
 #ifdef HAS_REMOTE_BUTTON_HOLD
 bool remote_button_hold(void);

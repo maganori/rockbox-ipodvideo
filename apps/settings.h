@@ -788,6 +788,10 @@ struct user_settings
     int buttonlight_brightness;
 #endif
 
+#ifdef HAS_BUTTON_HOLD
+    bool poweroff_on_hold; /* 0=no 1=yes */
+#endif
+
 #ifdef IPOD_ACCESSORY_PROTOCOL
     int serial_bitrate; /* 0=auto 1=9600 2=19200 3=38400 4=57600 */
 #endif

@@ -540,6 +540,11 @@ static int sleeptimer_duration_cb(int action,
 
 MENUITEM_SETTING(start_screen, &global_settings.start_in_screen, NULL);
 MENUITEM_SETTING(poweroff, &global_settings.poweroff, NULL);
+/* PATCH START : hold-poweroff */
+#ifdef HAS_BUTTON_HOLD
+MENUITEM_SETTING(poweroff_on_hold, &global_settings.poweroff_on_hold, NULL);
+#endif
+/* PATCH  END  : hold-poweroff */
 MENUITEM_FUNCTION_DYNTEXT(sleeptimer_toggle, 0, toggle_sleeptimer,
                           sleeptimer_getname, sleeptimer_voice, NULL,
                           NULL, Icon_NOICON);
@@ -566,6 +571,11 @@ MAKE_MENU(startup_shutdown_menu, ID2P(LANG_STARTUP_SHUTDOWN),
             &show_shutdown_message,
             &start_screen,
             &poweroff,
+/* PATCH START : hold-poweroff */
+#ifdef HAS_BUTTON_HOLD
+            &poweroff_on_hold,
+#endif
+/* PATCH  END  : hold-poweroff */
             &sleeptimer_toggle,
             &sleeptimer_duration,
             &sleeptimer_on_startup,

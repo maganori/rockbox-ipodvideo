@@ -55,6 +55,13 @@ static long lastbtn;   /* Last valid button status */
 static long last_read; /* Last button status, for debouncing/filtering */
 static bool flipped;  /* buttons can be flipped to match the LCD flip */
 
+#ifndef SIMULATOR /* hold-poweroff */
+#ifdef HAS_BUTTON_HOLD
+static bool do_poweroff_on_hold = false;
+static bool signaled_poweroff_on_hold = false;
+#endif
+#endif /* hold-poweroff */
+
 #ifdef HAVE_BACKLIGHT /* Filter first keypress function pointer */
 static bool (*keypress_filter_fn)(int, int);
 #ifdef HAVE_REMOTE_LCD
@@ -220,6 +227,25 @@ static void button_tick(void)
     btn = button_read(&data);
 
     check_audio_peripheral_state();
+
+#ifndef SIMULATOR /* hold-poweroff */
+#ifdef HAS_BUTTON_HOLD
+    static long shutdown_tick = 0;
+    if(signaled_poweroff_on_hold
+#if CONFIG_CHARGING && !defined(HAVE_POWEROFF_WHILE_CHARGING)
+       && !charger_inserted()
+#endif
+       && shutdown_tick == 0)
+    {
+        shutdown_tick = current_tick;
+        sys_poweroff();
+    }
+    signaled_poweroff_on_hold = false;
+    if(shutdown_tick && TIME_AFTER(current_tick, shutdown_tick +10*HZ))
+        /* Safety net */
+        power_off();
+#endif /* HAS_BUTTON_HOLD */
+#endif /* hold-poweroff */
 
     /* Find out if a key has been released */
     diff = btn ^ lastbtn;
@@ -539,6 +565,21 @@ void button_set_flip(bool flip)
     }
 }
 #endif /* HAVE_LCD_FLIP */
+
+#ifndef SIMULATOR /* hold-poweroff */
+#ifdef HAS_BUTTON_HOLD
+void set_poweroff_on_hold(bool yesno)
+{
+    do_poweroff_on_hold = yesno;
+}
+
+void signal_hold_button_on(void)
+{
+    if(do_poweroff_on_hold)
+        signaled_poweroff_on_hold = true;
+}
+#endif
+#endif /* hold-poweroff */
 
 #ifdef HAVE_BACKLIGHT
 void set_backlight_filter_keypress(bool value)

@@ -9922,6 +9922,20 @@
   </voice>
 </phrase>
 <phrase>
+  id: LANG_POWEROFF_ON_HOLD
+  desc: system setting
+  user: core
+  <source>
+    *: "Poweroff on hold"
+  </source>
+  <dest>
+    *: "Poweroff on hold"
+  </dest>
+  <voice>
+    *: "Power off on hold"
+  </voice>
+</phrase>
+<phrase>
   id: LANG_LEFT_QS_ITEM
   desc: used for the submenu name for the quickscreen items
   user: core
