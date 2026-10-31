@@ -28,6 +28,15 @@
 #include "button-target.h"
 #include "usb_drv.h"
 
+#if CONFIG_CPU == PP5020
+#define PLL_80MHZ 0x8a020a03
+#else
+#define PLL_80MHZ 0x8a121403
+#define PLL_20MHZ 0x8a321403
+#endif
+
+static bool pll_initialized = false;
+
 /* Bit 0 - 20: Cached Address */
 #define CACHE_ADDRESS_MASK ((1<<21)-1)
 /* Bit 22: Cache line dirty */
@@ -346,6 +355,41 @@ void scale_suspend_core(bool suspend)
     }
 }
 
+static void init_pll(void)
+{
+    /* initialize to 80 MHz */
+
+    DEV_INIT2    |= INIT_PLL;   /* enable PLL power */
+    PLL_CONTROL  |= 0x88000000; /* enable PLL */
+
+    scale_suspend_core(true);
+    CLOCK_SOURCE  = 0x20002222; /* source #1, #2, #3, #4: 24MHz (#2 active) */
+    DEV_TIMING1   = 0x00000303;
+    scale_suspend_core(false);
+
+#ifdef IPOD_MINI2G
+    MLCD_SCLK_DIV = 0x00000001; /* Mono LCD bridge serial clock divider */
+#elif defined(IPOD_NANO)
+    IDE0_CFG     |= 0x10000000; /* set ">65MHz" bit */
+#endif
+
+#if CONFIG_CPU == PP5020
+    PLL_CONTROL   = PLL_80MHZ; /* 80 MHz = 10/3 * 24MHz */
+    PLL_STATUS    = 0xd19b;     /* unlock frequencies > 66MHz */
+    PLL_CONTROL   = PLL_80MHZ; /* repeat setup */
+    udelay(500);                /* wait for relock */
+#elif (CONFIG_CPU == PP5022) || (CONFIG_CPU == PP5024)
+    PLL_CONTROL   = PLL_80MHZ; /*  80 MHz = (20/3 * 24MHz) / 2 */
+    while (!(PLL_STATUS & 0x80000000)); /* wait for relock */
+#endif
+    scale_suspend_core(true);
+    DEV_TIMING1   = 0x00000808;
+    CLOCK_SOURCE  = 0x20007777; /* source #1, #2, #3, #4: PLL (#2 active) */
+    scale_suspend_core(false);
+
+    pll_initialized = true;
+}
+
 #ifdef HAVE_ADJUSTABLE_CPU_FREQ
 #if NUM_CORES > 1
 void set_cpu_frequency__lock(void)
@@ -365,111 +409,59 @@ void set_cpu_frequency(long frequency)
 static void pp_set_cpu_frequency(long frequency)
 #endif
 {
+    /* Note1: The PP5022 PLL must be run at >= 96MHz
+     * PP5026 is similar to PP5022 except it doesn't
+     * have this limitation (and the post divider?)
+     */
+
+    if (!pll_initialized)
+        init_pll();
+
     switch (frequency)
     {
-      /* Note1: The PP5022 PLL must be run at >= 96MHz
-       * Bits 20..21 select the post divider (1/2/4/8).
-       * PP5026 is similar to PP5022 except it doesn't
-       * have this limitation (and the post divider?)
-       * Note2: CLOCK_SOURCE is set via 0=32kHz, 1=16MHz,
-       * 2=24MHz, 3=33MHz, 4=48MHz, 5=SLOW, 6=FAST, 7=PLL.
-       * SLOW = 24MHz / (DIV_SLOW + 1), DIV = Bits 16-19
-       * FAST = PLL   / (DIV_FAST + 1), DIV = Bits 20-23 */
-      case CPUFREQ_SLEEP:
-        cpu_frequency =  CPUFREQ_SLEEP;
-        PLL_CONTROL  |=  0x0c000000;
-        scale_suspend_core(true);
-        CLOCK_SOURCE  =  0x20000000; /* source #1, #2, #3, #4: 32kHz (#2 active) */
-        scale_suspend_core(false);
-        PLL_CONTROL  &= ~0x80000000; /* disable PLL */
-        DEV_INIT2    &= ~INIT_PLL;   /* disable PLL power */
-        break;
+        case CPUFREQ_MAX:
+#ifdef IPOD_MINI2G
+            MLCD_SCLK_DIV = 1; /* Mono LCD bridge serial clock divider */
+#elif defined(IPOD_NANO)
+            IDE0_CFG |= 0x10000000; /* set ">65MHz" bit */
+#endif
+            PLL_CONTROL = PLL_80MHZ; /* change speed */
+            cpu_frequency = CPUFREQ_MAX;
+            break;
 
-      case CPUFREQ_MAX:
-        cpu_frequency = CPUFREQ_MAX;
-        DEV_INIT2    |= INIT_PLL;   /* enable PLL power */
-        PLL_CONTROL  |= 0x88000000; /* enable PLL */
-        scale_suspend_core(true);
-        CLOCK_SOURCE  = 0x20002222; /* source #1, #2, #3, #4: 24MHz (#2 active) */
-        DEV_TIMING1   = 0x00000303;
-        scale_suspend_core(false);
-#if   defined(IPOD_MINI2G)
-        MLCD_SCLK_DIV = 0x00000001; /* Mono LCD bridge serial clock divider */
+        case CPUFREQ_NORMAL:
+#if (CONFIG_CPU == PP5022) || (CONFIG_CPU == PP5024)
+            PLL_CONTROL = PLL_20MHZ; /* change speed */
+            cpu_frequency = CPUFREQ_NORMAL;
+#else
+            /* The original quickboost patch defines no 20MHz PLL
+             * value for PP5020; init_pll() leaves the PLL at 80MHz,
+             * so report CPUFREQ_MAX rather than inventing a value */
+            cpu_frequency = CPUFREQ_MAX;
+#endif
+#ifdef IPOD_MINI2G
+            MLCD_SCLK_DIV = 0; /* Mono LCD bridge serial clock divider */
 #elif defined(IPOD_NANO)
-        IDE0_CFG     |= 0x10000000; /* set ">65MHz" bit */
+            IDE0_CFG &= ~0x10000000; /* clear ">65MHz" bit */
 #endif
-#if CONFIG_CPU == PP5020
-        PLL_CONTROL   = 0x8a020a03; /* 80 MHz = 10/3 * 24MHz */
-        PLL_STATUS    = 0xd19b;     /* unlock frequencies > 66MHz */
-        PLL_CONTROL   = 0x8a020a03; /* repeat setup */
-        udelay(500);                /* wait for relock */
-#elif (CONFIG_CPU == PP5022) || (CONFIG_CPU == PP5024)
-        PLL_CONTROL   = 0x8a121403; /*  80 MHz = (20/3 * 24MHz) / 2 */
-        while (!(PLL_STATUS & 0x80000000)); /* wait for relock */
-#endif
-        scale_suspend_core(true);
-        DEV_TIMING1   = 0x00000808;
-        CLOCK_SOURCE  = 0x20007777; /* source #1, #2, #3, #4: PLL (#2 active) */
-        scale_suspend_core(false);
-        break;
-#if 0 /******** CPUFREQ_NORMAL = 24MHz without PLL ********/
-      case CPUFREQ_NORMAL:
-        cpu_frequency =  CPUFREQ_NORMAL;
-        PLL_CONTROL  |=  0x08000000;
-        scale_suspend_core(true);
-        CLOCK_SOURCE  =  0x20002222; /* source #1, #2, #3, #4: 24MHz (#2 active) */
-        DEV_TIMING1   =  0x00000303;
+            break;
+
+        default:
+            cpu_frequency =  CPUFREQ_DEFAULT;
+            PLL_CONTROL  |=  0x08000000;
+            scale_suspend_core(true);
+            CLOCK_SOURCE  =  0x20002222; /* source #1, #2, #3, #4: 24MHz (#2 active) */
+            DEV_TIMING1   =  0x00000303;
 #if   defined(IPOD_MINI2G)
-        MLCD_SCLK_DIV =  0x00000000; /* Mono LCD bridge serial clock divider */
+            MLCD_SCLK_DIV =  0x00000000; /* Mono LCD bridge serial clock divider */
 #elif defined(IPOD_NANO)
-        IDE0_CFG     &= ~0x10000000; /* clear ">65MHz" bit */
+            IDE0_CFG     &= ~0x10000000; /* clear ">65MHz" bit */
 #endif
-        scale_suspend_core(false);
-        PLL_CONTROL  &= ~0x80000000; /* disable PLL */
-        DEV_INIT2    &= ~INIT_PLL;   /* disable PLL power */
-        break;
-#else /******** CPUFREQ_NORMAL = 30MHz with PLL ********/
-      case CPUFREQ_NORMAL:
-        cpu_frequency = CPUFREQ_NORMAL;
-        DEV_INIT2    |= INIT_PLL;   /* enable PLL power */
-        PLL_CONTROL  |= 0x88000000; /* enable PLL */
-        scale_suspend_core(true);
-        CLOCK_SOURCE  = 0x20002222; /* source #1, #2, #3, #4: 24MHz (#2 active) */
-        DEV_TIMING1   = 0x00000303;
-        scale_suspend_core(false);
-#if   defined(IPOD_MINI2G)
-        MLCD_SCLK_DIV =  0x00000000; /* Mono LCD bridge serial clock divider */
-#elif defined(IPOD_NANO)
-        IDE0_CFG     &= ~0x10000000; /* clear ">65MHz" bit */
-#endif
-#if CONFIG_CPU == PP5020
-        PLL_CONTROL   = 0x8a020504; /* 30 MHz = 5/4 * 24MHz */
-        udelay(500);                /* wait for relock */
-#elif (CONFIG_CPU == PP5022) || (CONFIG_CPU == PP5024)
-        PLL_CONTROL   = 0x8a220501; /* 30 MHz = (5/1 * 24MHz) / 4 */
-        while (!(PLL_STATUS & 0x80000000)); /* wait for relock */
-#endif
-        scale_suspend_core(true);
-        DEV_TIMING1   = 0x00000303;
-        CLOCK_SOURCE  = 0x20007777; /* source #1, #2, #3, #4: PLL (#2 active) */
-        scale_suspend_core(false);
-        break;
-#endif /******** CPUFREQ_NORMAL end ********/
-      default:
-        cpu_frequency =  CPUFREQ_DEFAULT;
-        PLL_CONTROL  |=  0x08000000;
-        scale_suspend_core(true);
-        CLOCK_SOURCE  =  0x20002222; /* source #1, #2, #3, #4: 24MHz (#2 active) */
-        DEV_TIMING1   =  0x00000303;
-#if   defined(IPOD_MINI2G)
-        MLCD_SCLK_DIV =  0x00000000; /* Mono LCD bridge serial clock divider */
-#elif defined(IPOD_NANO)
-        IDE0_CFG     &= ~0x10000000; /* clear ">65MHz" bit */
-#endif
-        scale_suspend_core(false);
-        PLL_CONTROL  &= ~0x80000000; /* disable PLL */
-        DEV_INIT2    &= ~INIT_PLL;   /* disable PLL power */
-        break;
+            scale_suspend_core(false);
+            PLL_CONTROL  &= ~0x80000000; /* disable PLL */
+            DEV_INIT2    &= ~INIT_PLL;   /* disable PLL power */
+            pll_initialized = false;
+            break;
     }
 }
 #endif /* !BOOTLOADER || (SANSA_E200 || SANSA_C200 || PHILIPS_SA9200) */
