@@ -389,11 +389,23 @@ void gui_message_loop(void)
     bool quit;
 
     do {
+#ifdef __WIN32__
+        /* On some Win32 setups SDL_WaitEvent() never blocks and returns
+           an error right away, over and over, which shuts the simulator
+           down immediately after startup. Poll with a small delay
+           instead of waiting on the Win32 message loop. */
+        if(SDL_PollEvent(&event) == 0) {
+            SDL_Delay(1);
+            quit = false;
+            continue;
+        }
+#else
         /* wait for the next event */
         if(SDL_WaitEvent(&event) == 0) {
             printf("SDL_WaitEvent(): %s\n", SDL_GetError());
             return; /* error, out of here */
         }
+#endif
 
         sim_enter_irq_handler();
         quit = event_handler(&event);
