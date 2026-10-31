@@ -62,7 +62,11 @@
 #ifndef MAX_FONT_SIZE
 #if LCD_HEIGHT > 64
 #if MEMORYSIZE > 2
+#if MEMORYSIZE > 4
+#define MAX_FONT_SIZE   (1024*1024*2)
+#else
 #define MAX_FONT_SIZE   60000
+#endif
 #else
 #define MAX_FONT_SIZE   10000
 #endif
