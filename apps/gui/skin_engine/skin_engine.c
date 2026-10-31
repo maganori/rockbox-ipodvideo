@@ -170,8 +170,24 @@ void settings_apply_skins(void)
 {
     int i;
 
+    /* Reloading the skins takes over the buffer that playback is
+     * using, so playback has to stop while the skins are unloaded
+     * and loaded again. Remember the position so playback can
+     * resume where it stopped once the new skins are in place. */
+    bool resume = false;
+    unsigned long resume_elapsed = 0;
+    unsigned long resume_offset = 0;
     if (audio_status() & AUDIO_STATUS_PLAY)
+    {
+        struct mp3entry *track = audio_current_track();
+        if (track != NULL)
+        {
+            resume_elapsed = track->elapsed;
+            resume_offset = track->offset;
+            resume = true;
+        }
         audio_stop();
+    }
 
     bool first_run = skin_backdrop_init();
 
@@ -205,6 +221,9 @@ void settings_apply_skins(void)
 
     FOR_NB_SCREENS(i)
         skin_backdrop_show(sb_get_backdrop(i));
+
+    if (resume)
+        audio_play(resume_elapsed, resume_offset);
 }
 
 static void skin_load(enum skinnable_screens skin, enum screen_type screen,
