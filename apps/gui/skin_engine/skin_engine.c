@@ -175,9 +175,11 @@ void settings_apply_skins(void)
      * and loaded again. Remember the position so playback can
      * resume where it stopped once the new skins are in place. */
     bool resume = false;
+    bool resume_paused = false;
     unsigned long resume_elapsed = 0;
     unsigned long resume_offset = 0;
-    if (audio_status() & AUDIO_STATUS_PLAY)
+    int status = audio_status();
+    if (status & AUDIO_STATUS_PLAY)
     {
         struct mp3entry *track = audio_current_track();
         if (track != NULL)
@@ -185,6 +187,9 @@ void settings_apply_skins(void)
             resume_elapsed = track->elapsed;
             resume_offset = track->offset;
             resume = true;
+            /* a paused track also has the PLAY bit set; it must come
+             * back paused, not playing */
+            resume_paused = (status & AUDIO_STATUS_PAUSE) != 0;
         }
         audio_stop();
     }
@@ -223,7 +228,11 @@ void settings_apply_skins(void)
         skin_backdrop_show(sb_get_backdrop(i));
 
     if (resume)
+    {
         audio_play(resume_elapsed, resume_offset);
+        if (resume_paused)
+            audio_pause();
+    }
 }
 
 static void skin_load(enum skinnable_screens skin, enum screen_type screen,
